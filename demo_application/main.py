@@ -71,7 +71,7 @@ def detect_from_image(detector, uploaded_file):
         scale = max_dimension / max(height, width)
         new_width = int(width * scale)
         new_height = int(height * scale)
-        image = cv2.resize(image, (new_width, new_height))
+        image = cv2.resize(image, (new_width, new_height), interpolation=cv2.INTER_AREA)
 
     # Predict cards with coordinates
     detections, coordinates, boxes = detector.predict(image)
