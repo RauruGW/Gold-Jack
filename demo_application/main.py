@@ -29,6 +29,10 @@ def initialize_session_state():
         st.session_state.detection_status = None
     if "detection_message" not in st.session_state:
         st.session_state.detection_message = None
+    if "player_groups" not in st.session_state:
+        st.session_state.player_groups = {}
+    if "all_detections" not in st.session_state:
+        st.session_state.all_detections = []
 
 
 def change_language():
@@ -60,20 +64,50 @@ def detect_from_image(detector, uploaded_file):
     nparr = np.frombuffer(file_bytes, np.uint8)
     image = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
     
-    # Save image to session state so it persists
-    st.session_state.current_image = image
-    
-    detections = detector.predict(image)
-    detected_cards = st.session_state.game.sort_cards(detector.parse_cards(detections))
-    
-    if detected_cards:
+    # Redimensionar la imagen para mejorar detección y visualización
+    max_dimension = 600
+    height, width = image.shape[:2]
+    if max(height, width) > max_dimension:
+        scale = max_dimension / max(height, width)
+        new_width = int(width * scale)
+        new_height = int(height * scale)
+        image = cv2.resize(image, (new_width, new_height))
+
+    # Predict cards with coordinates
+    detections, coordinates, boxes = detector.predict(image)
+
+    # Group cards by player position
+    if detections:
+        player_groups, player_labels = detector.group_cards_by_position(detections, coordinates)
+
+        # Draw bounding boxes with different colors per player
+        colors = [
+            (255, 0, 0),    # Blue
+            (0, 255, 0),    # Green
+            (0, 0, 255),    # Red
+            (0, 255, 255),  # Yellow
+            (255, 0, 255),  # Magenta
+            (255, 255, 0),  # Cyan
+        ]
+
+        for i, box in enumerate(boxes):
+            x1, y1, x2, y2 = map(int, box)
+            label = player_labels[i]
+            color = colors[label % len(colors)]
+            cv2.rectangle(image, (x1, y1), (x2, y2), color, 4)
+            cv2.putText(image, detections[i], (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, color, 2)
+
+        st.session_state.current_image = image
         st.session_state.detection_status = "success"
         st.session_state.detection_message = texts.get("cards_detected")
-        st.session_state.cards_team_a = detected_cards
-        st.session_state.cards_team_b = st.session_state.game.get_other_cards(detected_cards)
+        st.session_state.player_groups = player_groups
+        st.session_state.all_detections = detections
     else:
+        st.session_state.current_image = image
         st.session_state.detection_status = "error"
         st.session_state.detection_message = texts.get("no_cards_detected")
+        st.session_state.player_groups = {}
+        st.session_state.all_detections = []
 
 
 def handle_game_mode_change(mode_choice):
@@ -124,8 +158,9 @@ def main():
 
         # Display current image if available
         if st.session_state.current_image is not None:
-            st.image(st.session_state.current_image, channels="BGR", caption="Imagen cargada")
-            
+            display_img = cv2.cvtColor(st.session_state.current_image, cv2.COLOR_BGR2RGB)
+            st.image(display_img, channels="RGB", caption=texts.get("image_analyzed"), use_container_width=True)
+
             # Display detection status message if available
             if st.session_state.detection_status == "success":
                 st.success(st.session_state.detection_message)
@@ -133,18 +168,31 @@ def main():
                 st.error(st.session_state.detection_message)
         
         st.write("---")
-        st.write(
-            f"{texts.get('cards_team_a')} - {st.session_state.game.get_points(st.session_state.cards_team_a, st.session_state.team_a_last10)} {texts.get('points')}:"
-        )
-        st.write(
-            ", ".join(str(card) for card in st.session_state.cards_team_a) if st.session_state.cards_team_a else ""
-        )
-        st.write(
-            f"{texts.get('cards_team_b')} - {st.session_state.game.get_points(st.session_state.cards_team_b, not st.session_state.team_a_last10)} {texts.get('points')}:"
-        )
-        st.write(
-            ", ".join(str(card) for card in st.session_state.cards_team_b) if st.session_state.cards_team_b else ""
-        )
+        
+        # Display detected player groups
+        if st.session_state.player_groups:
+            st.subheader("Jugadores Detectados")
+            for player_id, cards_raw in st.session_state.player_groups.items():
+                # Parse and sort cards
+                parsed_cards = st.session_state.game.sort_cards(
+                    detector.parse_cards(cards_raw)
+                )
+                player_name = f"Jugador {player_id + 1}"
+                cards_str = ", ".join(str(card) for card in parsed_cards) if parsed_cards else "Sin cartas"
+                st.write(f"**{player_name}**: {cards_str}")
+        else:
+            st.write(
+                f"{texts.get('cards_team_a')} - {st.session_state.game.get_points(st.session_state.cards_team_a, st.session_state.team_a_last10)} {texts.get('points')}:"
+            )
+            st.write(
+                ", ".join(str(card) for card in st.session_state.cards_team_a) if st.session_state.cards_team_a else ""
+            )
+            st.write(
+                f"{texts.get('cards_team_b')} - {st.session_state.game.get_points(st.session_state.cards_team_b, not st.session_state.team_a_last10)} {texts.get('points')}:"
+            )
+            st.write(
+                ", ".join(str(card) for card in st.session_state.cards_team_b) if st.session_state.cards_team_b else ""
+            )
 
         sub_col1, sub_col2 = st.columns(2)
         with sub_col1:

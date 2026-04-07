@@ -29,6 +29,7 @@ class Texts:
                 "start_new_game": "Start new game",
                 "new_game_started": "New game started successfully!",
                 "game_modes": ["All Trumps", "No Trumps", "Spades", "Hearts", "Diamonds", "Clubs"],
+                "image_analyzed": "Analyzed image",
             },
             "bg": {
                 "page_title": "Счетоводител за Игра на Белот",
@@ -56,6 +57,7 @@ class Texts:
                 "start_new_game": "Започване на нова игра",
                 "new_game_started": "Нова игра започната успешно!",
                 "game_modes": ["Всички Коз", "Без Коз", "Пика", "Купа", "Каро", "Спатия"],
+                "image_analyzed": "Imagen analizada",
             },
         }
 
