@@ -1,5 +1,6 @@
 import streamlit as st
 import cv2
+import numpy as np
 from utils.game_logic import Game, GameMode
 from utils.card_game_detector import CardGameDetector
 from utils.constants import MODEL_PATH, CLASS_NAMES
@@ -22,6 +23,8 @@ def initialize_session_state():
         st.session_state.language = "en"
     if "texts" not in st.session_state:
         st.session_state.texts = Texts(language=st.session_state.language)
+    if "current_image" not in st.session_state:
+        st.session_state.current_image = None
 
 
 def change_language():
@@ -42,27 +45,23 @@ def display_team_scores():
     st.table(table_data)
 
 
-def capture_cards(detector):
-    """Capture cards using the webcam and process detections."""
+def detect_from_image(detector, uploaded_file):
     texts = st.session_state.texts
-    st.write(texts.get("capturing_cards"))
-    cap = cv2.VideoCapture(0)
-    cap.set(3, 640)
-    cap.set(4, 480)
-
-    frame_placeholder = st.empty()
-    detected_classes = []
-    for _ in range(10):
-        ret, frame = cap.read()
-        if ret:
-            frame_placeholder.image(frame, channels="BGR")
-            detected_classes.extend(detector.capture_a_frame(cap))
-    cap.release()
-    frame_placeholder.empty()
-
-    detections = detector.aggregate_detections(detected_classes)
+    
+    if uploaded_file is None:
+        st.warning("Por favor carga una imagen")
+        return
+    
+    file_bytes = uploaded_file.read()
+    nparr = np.frombuffer(file_bytes, np.uint8)
+    image = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+    
+    # Save image to session state so it persists
+    st.session_state.current_image = image
+    
+    detections = detector.predict(image)
     detected_cards = st.session_state.game.sort_cards(detector.parse_cards(detections))
-
+    
     if detected_cards:
         st.success(texts.get("cards_detected"))
         st.session_state.cards_team_a = detected_cards
@@ -117,6 +116,11 @@ def main():
                 change_language()
                 st.rerun()
 
+        # Display current image if available
+        if st.session_state.current_image is not None:
+            st.image(st.session_state.current_image, channels="BGR", caption="Imagen cargada")
+        
+        st.write("---")
         st.write(
             f"{texts.get('cards_team_a')} - {st.session_state.game.get_points(st.session_state.cards_team_a, st.session_state.team_a_last10)} {texts.get('points')}:"
         )
@@ -132,9 +136,11 @@ def main():
 
         sub_col1, sub_col2 = st.columns(2)
         with sub_col1:
-            if st.button(texts.get("take_snapshot")):
-                capture_cards(detector)
-                st.rerun()
+            uploaded_image = st.file_uploader("Carga una imagen de cartas", type=["jpg", "jpeg", "png", "bmp"])
+            if uploaded_image is not None:
+                if st.button(texts.get("take_snapshot")):
+                    detect_from_image(detector, uploaded_image)
+                    st.rerun()
 
         with sub_col2:
             if st.button(texts.get("flip_cards")):

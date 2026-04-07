@@ -1,7 +1,17 @@
 import time
 from collections import Counter
+import torch
 from ultralytics import YOLO
 from utils.game_logic import Card, Suit, Value, Game, GameMode
+
+_original_load = torch.load
+
+def _patched_load(*args, **kwargs):
+    if 'weights_only' not in kwargs:
+        kwargs['weights_only'] = False
+    return _original_load(*args, **kwargs)
+
+torch.load = _patched_load
 
 
 class CardGameDetector:
@@ -54,3 +64,12 @@ class CardGameDetector:
         all_cards = [self.parse_card(card) for card in detected_cards]
         parsed_cards = [parsed_card for parsed_card in all_cards if parsed_card is not None]
         return parsed_cards
+
+    def predict(self, image):
+        results = self.model(image, conf=0.5)
+        detections = []
+        for r in results:
+            for box in r.boxes:
+                cls = int(box.cls[0])
+                detections.append(self.class_names[cls])
+        return detections
