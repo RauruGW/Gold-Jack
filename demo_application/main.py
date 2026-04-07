@@ -25,6 +25,10 @@ def initialize_session_state():
         st.session_state.texts = Texts(language=st.session_state.language)
     if "current_image" not in st.session_state:
         st.session_state.current_image = None
+    if "detection_status" not in st.session_state:
+        st.session_state.detection_status = None
+    if "detection_message" not in st.session_state:
+        st.session_state.detection_message = None
 
 
 def change_language():
@@ -63,11 +67,13 @@ def detect_from_image(detector, uploaded_file):
     detected_cards = st.session_state.game.sort_cards(detector.parse_cards(detections))
     
     if detected_cards:
-        st.success(texts.get("cards_detected"))
+        st.session_state.detection_status = "success"
+        st.session_state.detection_message = texts.get("cards_detected")
         st.session_state.cards_team_a = detected_cards
         st.session_state.cards_team_b = st.session_state.game.get_other_cards(detected_cards)
     else:
-        st.error(texts.get("no_cards_detected"))
+        st.session_state.detection_status = "error"
+        st.session_state.detection_message = texts.get("no_cards_detected")
 
 
 def handle_game_mode_change(mode_choice):
@@ -119,6 +125,12 @@ def main():
         # Display current image if available
         if st.session_state.current_image is not None:
             st.image(st.session_state.current_image, channels="BGR", caption="Imagen cargada")
+            
+            # Display detection status message if available
+            if st.session_state.detection_status == "success":
+                st.success(st.session_state.detection_message)
+            elif st.session_state.detection_status == "error":
+                st.error(st.session_state.detection_message)
         
         st.write("---")
         st.write(
