@@ -9,6 +9,11 @@ class Suit(Enum):
 
 
 class Value(Enum):
+    TWO = "2"
+    THREE = "3"
+    FOUR = "4"
+    FIVE = "5"
+    SIX = "6"
     SEVEN = "7"
     EIGHT = "8"
     NINE = "9"
@@ -29,6 +34,11 @@ class GameMode(Enum):
 
 
 class CardTrumpOrder(Enum):
+    TWO = 8
+    THREE = 9
+    FOUR = 10
+    FIVE = 11
+    SIX = 12
     JACK = 0
     NINE = 1
     ACE = 2
@@ -40,6 +50,11 @@ class CardTrumpOrder(Enum):
 
 
 class CardNonTrumpOrder(Enum):
+    TWO = 8
+    THREE = 9
+    FOUR = 10
+    FIVE = 11
+    SIX = 12
     ACE = 0
     TEN = 1
     KING = 2
@@ -51,6 +66,11 @@ class CardNonTrumpOrder(Enum):
 
 
 class CardTrumpValue(Enum):
+    TWO = 0
+    THREE = 0
+    FOUR = 0
+    FIVE = 0
+    SIX = 0
     SEVEN = 0
     EIGHT = 0
     QUEEN = 3
@@ -62,6 +82,11 @@ class CardTrumpValue(Enum):
 
 
 class CardNonTrumpValue(Enum):
+    TWO = 0
+    THREE = 0
+    FOUR = 0
+    FIVE = 0
+    SIX = 0
     SEVEN = 0
     EIGHT = 0
     NINE = 0
