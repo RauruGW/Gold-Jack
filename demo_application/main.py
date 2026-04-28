@@ -118,8 +118,6 @@ def handle_game_mode_change(mode_choice):
         texts.get_modes()[1]: GameMode.NO_TRUMPS,
         texts.get_modes()[2]: GameMode.SPADES,
         texts.get_modes()[3]: GameMode.HEARTS,
-        texts.get_modes()[4]: GameMode.DIAMONDS,
-        texts.get_modes()[5]: GameMode.CLUBS,
     }
 
     if mode_choice != texts.get_modes()[st.session_state.current_game_mode_index]:
@@ -151,8 +149,8 @@ def main():
             st.subheader(texts.get("stats_actions"))
 
         with subcol2:
-            if st.button("🇬🇧 / 🇧🇬"):
-                st.session_state.language = "bg" if st.session_state.language == "en" else "en"
+            if st.button("EN / ES"):
+                st.session_state.language = "es" if st.session_state.language == "en" else "en"
                 change_language()
                 st.rerun()
 
