@@ -1,4 +1,4 @@
-MODEL_PATH = "../final_models/yolov8m_synthetic.pt"
+MODEL_PATH = "../final_models/yolov8s_playing_cards.pt"
 CLASS_NAMES = [
     "10c",
     "10d",
