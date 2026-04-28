@@ -69,7 +69,7 @@ class CardGameDetector:
 
     def predict(self, image):
         """Predict cards with their coordinates and merge duplicate corners."""
-        results = self.model(image, conf=0.25, imgsz=416)
+        results = self.model(image, conf=0.15, imgsz=416)
 
         # Diccionario para unificar las esquinas de una misma carta
         merged_cards = {}

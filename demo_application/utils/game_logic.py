@@ -97,6 +97,142 @@ class CardNonTrumpValue(Enum):
     ACE = 11
 
 
+class BlackjackHand:
+    def __init__(self, cards):
+        self.cards = cards
+
+    def get_value(self):
+        """Returns (best_value, is_soft). is_soft=True if an Ace counts as 11."""
+        total = 0
+        aces = 0
+        for card in self.cards:
+            if card.value == Value.ACE:
+                aces += 1
+                total += 11
+            elif card.value in (Value.JACK, Value.QUEEN, Value.KING):
+                total += 10
+            else:
+                total += int(card.value.value)
+        while total > 21 and aces > 0:
+            total -= 10
+            aces -= 1
+        return total, aces > 0
+
+    def is_blackjack(self):
+        total, _ = self.get_value()
+        return len(self.cards) == 2 and total == 21
+
+    def is_bust(self):
+        total, _ = self.get_value()
+        return total > 21
+
+    def is_pair(self):
+        if len(self.cards) != 2:
+            return False
+        def bj_val(card):
+            if card.value in (Value.JACK, Value.QUEEN, Value.KING):
+                return 10
+            if card.value == Value.ACE:
+                return 11
+            return int(card.value.value)
+        return bj_val(self.cards[0]) == bj_val(self.cards[1])
+
+    def pair_card_value(self):
+        c = self.cards[0]
+        if c.value in (Value.JACK, Value.QUEEN, Value.KING):
+            return 10
+        if c.value == Value.ACE:
+            return 11
+        return int(c.value.value)
+
+
+class BasicStrategy:
+    """Optimal basic strategy (6-8 decks, dealer stands soft 17)."""
+
+    HARD = {
+        **{t: {d: "HIT" for d in range(2, 12)} for t in range(4, 9)},
+        9:  {2:"HIT",  3:"DOUBLE",4:"DOUBLE",5:"DOUBLE",6:"DOUBLE",7:"HIT", 8:"HIT", 9:"HIT", 10:"HIT",11:"HIT"},
+        10: {2:"DOUBLE",3:"DOUBLE",4:"DOUBLE",5:"DOUBLE",6:"DOUBLE",7:"DOUBLE",8:"DOUBLE",9:"DOUBLE",10:"HIT",11:"HIT"},
+        11: {d:"DOUBLE" for d in range(2, 12)},
+        12: {2:"HIT",  3:"HIT", 4:"STAND",5:"STAND",6:"STAND",7:"HIT", 8:"HIT", 9:"HIT", 10:"HIT",11:"HIT"},
+        13: {2:"STAND",3:"STAND",4:"STAND",5:"STAND",6:"STAND",7:"HIT", 8:"HIT", 9:"HIT", 10:"HIT",11:"HIT"},
+        14: {2:"STAND",3:"STAND",4:"STAND",5:"STAND",6:"STAND",7:"HIT", 8:"HIT", 9:"HIT", 10:"HIT",11:"HIT"},
+        15: {2:"STAND",3:"STAND",4:"STAND",5:"STAND",6:"STAND",7:"HIT", 8:"HIT", 9:"HIT", 10:"HIT",11:"HIT"},
+        16: {2:"STAND",3:"STAND",4:"STAND",5:"STAND",6:"STAND",7:"HIT", 8:"HIT", 9:"HIT", 10:"HIT",11:"HIT"},
+        **{t: {d: "STAND" for d in range(2, 12)} for t in range(17, 22)},
+    }
+
+    SOFT = {
+        2:  {2:"HIT",  3:"HIT", 4:"HIT",   5:"DOUBLE",6:"DOUBLE",7:"HIT", 8:"HIT", 9:"HIT", 10:"HIT",11:"HIT"},
+        3:  {2:"HIT",  3:"HIT", 4:"HIT",   5:"DOUBLE",6:"DOUBLE",7:"HIT", 8:"HIT", 9:"HIT", 10:"HIT",11:"HIT"},
+        4:  {2:"HIT",  3:"HIT", 4:"DOUBLE",5:"DOUBLE",6:"DOUBLE",7:"HIT", 8:"HIT", 9:"HIT", 10:"HIT",11:"HIT"},
+        5:  {2:"HIT",  3:"HIT", 4:"DOUBLE",5:"DOUBLE",6:"DOUBLE",7:"HIT", 8:"HIT", 9:"HIT", 10:"HIT",11:"HIT"},
+        6:  {2:"HIT",  3:"DOUBLE",4:"DOUBLE",5:"DOUBLE",6:"DOUBLE",7:"HIT",8:"HIT",9:"HIT",10:"HIT",11:"HIT"},
+        7:  {2:"STAND",3:"DOUBLE",4:"DOUBLE",5:"DOUBLE",6:"DOUBLE",7:"STAND",8:"STAND",9:"HIT",10:"HIT",11:"HIT"},
+        8:  {d:"STAND" for d in range(2, 12)},
+        9:  {d:"STAND" for d in range(2, 12)},
+        10: {d:"STAND" for d in range(2, 12)},
+    }
+
+    PAIRS = {
+        2:  {2:"SPLIT",3:"SPLIT",4:"SPLIT",5:"SPLIT",6:"SPLIT",7:"SPLIT",8:"HIT",  9:"HIT",  10:"HIT",  11:"HIT"},
+        3:  {2:"SPLIT",3:"SPLIT",4:"SPLIT",5:"SPLIT",6:"SPLIT",7:"SPLIT",8:"HIT",  9:"HIT",  10:"HIT",  11:"HIT"},
+        4:  {2:"HIT",  3:"HIT",  4:"HIT",  5:"SPLIT",6:"SPLIT",7:"HIT",  8:"HIT",  9:"HIT",  10:"HIT",  11:"HIT"},
+        5:  {2:"DOUBLE",3:"DOUBLE",4:"DOUBLE",5:"DOUBLE",6:"DOUBLE",7:"DOUBLE",8:"DOUBLE",9:"DOUBLE",10:"HIT",11:"HIT"},
+        6:  {2:"SPLIT",3:"SPLIT",4:"SPLIT",5:"SPLIT",6:"SPLIT",7:"HIT",  8:"HIT",  9:"HIT",  10:"HIT",  11:"HIT"},
+        7:  {2:"SPLIT",3:"SPLIT",4:"SPLIT",5:"SPLIT",6:"SPLIT",7:"SPLIT",8:"HIT",  9:"HIT",  10:"HIT",  11:"HIT"},
+        8:  {d:"SPLIT" for d in range(2, 12)},
+        9:  {2:"SPLIT",3:"SPLIT",4:"SPLIT",5:"SPLIT",6:"SPLIT",7:"STAND",8:"SPLIT",9:"SPLIT",10:"STAND",11:"STAND"},
+        10: {d:"STAND" for d in range(2, 12)},
+        11: {d:"SPLIT" for d in range(2, 12)},
+    }
+
+    ACTION_EMOJI = {"HIT": "👊", "STAND": "✋", "DOUBLE": "⚡", "SPLIT": "✂️",
+                    "BLACKJACK": "🃏", "BUST": "💀"}
+    ACTION_DESC = {
+        "HIT":      "Pide otra carta.",
+        "STAND":    "Plantarse. Tu mano es suficientemente fuerte.",
+        "DOUBLE":   "Dobla tu apuesta y recibe exactamente una carta más.",
+        "SPLIT":    "Divide tu par en dos manos independientes.",
+        "BLACKJACK":"¡Blackjack natural! Ganas automáticamente.",
+        "BUST":     "Te has pasado de 21. Pierdes automáticamente.",
+    }
+
+    @classmethod
+    def dealer_upcard_value(cls, card):
+        if card.value == Value.ACE:
+            return 11
+        if card.value in (Value.JACK, Value.QUEEN, Value.KING):
+            return 10
+        return int(card.value.value)
+
+    @classmethod
+    def recommend(cls, player_hand, dealer_upcard):
+        if player_hand.is_blackjack():
+            return "BLACKJACK"
+        if player_hand.is_bust():
+            return "BUST"
+        d = cls.dealer_upcard_value(dealer_upcard)
+        total, is_soft = player_hand.get_value()
+
+        if player_hand.is_pair():
+            pv = player_hand.pair_card_value()
+            if pv in cls.PAIRS and d in cls.PAIRS[pv]:
+                return cls.PAIRS[pv][d]
+
+        if is_soft and len(player_hand.cards) == 2:
+            for card in player_hand.cards:
+                if card.value != Value.ACE:
+                    nv = 10 if card.value in (Value.JACK, Value.QUEEN, Value.KING) else int(card.value.value)
+                    if nv in cls.SOFT and d in cls.SOFT[nv]:
+                        return cls.SOFT[nv][d]
+
+        t = min(max(total, 4), 21)
+        if t in cls.HARD and d in cls.HARD[t]:
+            return cls.HARD[t][d]
+        return "STAND" if total >= 17 else "HIT"
+
+
 class Card:
     def __init__(self, value: Value, suit: Suit):
         self.value = value

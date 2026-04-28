@@ -1,7 +1,7 @@
 import streamlit as st
 import cv2
 import numpy as np
-from utils.game_logic import Game, GameMode
+from utils.game_logic import Game, GameMode, BlackjackHand, BasicStrategy
 from utils.card_game_detector import CardGameDetector
 from utils.constants import MODEL_PATH, CLASS_NAMES
 from utils.text_constants import Texts
@@ -167,30 +167,48 @@ def main():
         
         st.write("---")
         
-        # Display detected player groups
+        # Display detected player groups with blackjack analysis
         if st.session_state.player_groups:
             st.subheader("Jugadores Detectados")
-            for player_id, cards_raw in st.session_state.player_groups.items():
-                # Parse and sort cards
-                parsed_cards = st.session_state.game.sort_cards(
-                    detector.parse_cards(cards_raw)
-                )
-                player_name = f"Jugador {player_id + 1}"
-                cards_str = ", ".join(str(card) for card in parsed_cards) if parsed_cards else "Sin cartas"
-                st.write(f"**{player_name}**: {cards_str}")
-        else:
-            st.write(
-                f"{texts.get('cards_team_a')} - {st.session_state.game.get_points(st.session_state.cards_team_a, st.session_state.team_a_last10)} {texts.get('points')}:"
-            )
-            st.write(
-                ", ".join(str(card) for card in st.session_state.cards_team_a) if st.session_state.cards_team_a else ""
-            )
-            st.write(
-                f"{texts.get('cards_team_b')} - {st.session_state.game.get_points(st.session_state.cards_team_b, not st.session_state.team_a_last10)} {texts.get('points')}:"
-            )
-            st.write(
-                ", ".join(str(card) for card in st.session_state.cards_team_b) if st.session_state.cards_team_b else ""
-            )
+
+            # Parse all groups
+            parsed_groups = {
+                pid: detector.parse_cards(cards_raw)
+                for pid, cards_raw in st.session_state.player_groups.items()
+            }
+
+            # Dealer = the group with exactly 1 card detected
+            dealer_candidates = [pid for pid, cards in parsed_groups.items() if len(cards) == 1]
+            dealer_id = dealer_candidates[0] if len(dealer_candidates) == 1 else None
+
+            for player_id, cards in parsed_groups.items():
+                role = "🎩 Dealer" if player_id == dealer_id else f"👤 Jugador {player_id + 1}"
+                cards_str = ", ".join(str(c) for c in cards) if cards else "Sin cartas"
+                st.write(f"**{role}**: {cards_str}")
+
+            st.markdown("---")
+            st.subheader("Recomendación de Jugada")
+
+            dealer_cards = parsed_groups[dealer_id] if dealer_id is not None else []
+
+            if not dealer_cards:
+                st.warning("⚠️ No hay dealer detectado.")
+            else:
+                dealer_upcard = dealer_cards[0]
+                d_val = BasicStrategy.dealer_upcard_value(dealer_upcard)
+
+                for pid in [p for p in parsed_groups if p != dealer_id]:
+                    cards = parsed_groups[pid]
+                    st.write(f"**👤 Jugador {pid + 1}**")
+                    if len(cards) < 2:
+                        st.warning("⚠️ Se necesitan al menos 2 cartas para dar una recomendación.")
+                    else:
+                        player_hand = BlackjackHand(cards)
+                        p_total, p_soft = player_hand.get_value()
+                        soft_label = " (Soft)" if p_soft else ""
+                        st.write(f"Mano: {p_total}{soft_label} — Carta visible del dealer: {dealer_upcard} ({d_val})")
+                        action = BasicStrategy.recommend(player_hand, dealer_upcard)
+                        st.success(f"{BasicStrategy.ACTION_EMOJI[action]} **{action}** — {BasicStrategy.ACTION_DESC[action]}")
 
         sub_col1, sub_col2 = st.columns(2)
         with sub_col1:
