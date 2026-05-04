@@ -5,6 +5,7 @@ import numpy as np
 from sklearn.cluster import DBSCAN
 from ultralytics import YOLO
 from utils.game_logic import Card, Suit, Value, Game, GameMode
+from scipy.spatial.distance import pdist
 
 _original_load = torch.load
 
@@ -81,34 +82,36 @@ class CardGameDetector:
                 x1, y1, x2, y2 = box.xyxy[0].tolist()
 
                 if card_name not in merged_cards:
-                    merged_cards[card_name] = [x1, y1, x2, y2]
-                else:
-                    # Expandir la caja delimitadora usando los mínimos y máximos de las esquinas
-                    cx1, cy1, cx2, cy2 = merged_cards[card_name]
-                    merged_cards[card_name] = [
-                        min(cx1, x1), min(cy1, y1),
-                        max(cx2, x2), max(cy2, y2)
-                    ]
+                    merged_cards[card_name] = []
+                
+                merged_cards[card_name].append({
+                    'box': [x1, y1, x2, y2],
+                    'center': [(x1 + x2) / 2, (y1 + y2) / 2]
+                })
 
         detections = []
         coordinates = []
         boxes_list = []
 
         # Convertir el diccionario unificado en las listas de salida
-        for card_name, box in merged_cards.items():
-            x1, y1, x2, y2 = box
-
-            # Obtener el centro geométrico de la carta física real
-            x_center = (x1 + x2) / 2
-            y_center = (y1 + y2) / 2
-
+        for card_name, detections_list in merged_cards.items():
+            # Promediar centros de duplicados
+            avg_center = np.mean([d['center'] for d in detections_list], axis=0)
+            
+            # Usar el box que está más cerca del promedio
+            closest_idx = np.argmin([
+                np.linalg.norm(np.array(d['center']) - avg_center) 
+                for d in detections_list
+            ])
+            closest_box = detections_list[closest_idx]['box']
+            
             detections.append(card_name)
-            coordinates.append([x_center, y_center])
-            boxes_list.append([x1, y1, x2, y2])
+            coordinates.append(avg_center.tolist())
+            boxes_list.append(closest_box)
 
         return detections, coordinates, boxes_list
 
-    def group_cards_by_position(self, detections, coordinates, eps=250, min_samples=1):
+    def group_cards_by_position(self, detections, coordinates, boxes_list, eps=250, min_samples=1):
         """Group cards into player hands based on spatial proximity.
         
         Args:
@@ -120,21 +123,43 @@ class CardGameDetector:
         Returns:
             Dictionary mapping player_id to list of cards, and a list of player_labels for each detection
         """
-        if not coordinates:
+        if not coordinates or len(boxes_list) < 2:
             return {}, []
+        
+        coordinates_array = np.array(coordinates)
+        distances = pdist(coordinates_array)
 
-        coordinates = np.array(coordinates)
-        clustering = DBSCAN(eps=eps, min_samples=min_samples).fit(coordinates)
+        # Estrategia: buscar el mayor salto en la PRIMERA MITAD de las distancias
+        if len(distances) == 1:
+            eps = distances[0] * 0.8
+        else:
+            distances_sorted = np.sort(distances)
+            n = len(distances_sorted)
+            
+            # Calcular diferencias consecutivas
+            diffs = np.diff(distances_sorted)
+            
+            # Buscar el máximo salto solo en la primera mitad
+            midpoint = n // 2
+            first_half_diffs = diffs[:midpoint]
+            
+            if len(first_half_diffs) > 0:
+                max_jump_in_first_half = np.argmax(first_half_diffs)
+                eps = distances_sorted[max_jump_in_first_half]
+            else:
+                # Si no hay primera mitad (muy pocas distancias), usar percentil
+                eps = np.percentile(distances, 40)
+
+        clustering = DBSCAN(eps=eps, min_samples=1).fit(coordinates_array)
         labels = clustering.labels_
         
         players = {}
         player_labels = []
+        
         for card, label in zip(detections, labels):
-            if label == -1:  # Noise points (isolated cards)
-                label = max(players.keys()) + 1 if players else 0
-            
             if label not in players:
                 players[label] = []
+            
             players[label].append(card)
             player_labels.append(label)
 

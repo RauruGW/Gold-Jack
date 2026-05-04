@@ -78,7 +78,7 @@ def detect_from_image(detector, uploaded_file):
 
     # Group cards by player position
     if detections:
-        player_groups, player_labels = detector.group_cards_by_position(detections, coordinates)
+        player_groups, player_labels = detector.group_cards_by_position(detections, coordinates, boxes)
 
         # Draw bounding boxes with different colors per player
         colors = [
