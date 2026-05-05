@@ -1,4 +1,7 @@
 from enum import Enum
+from utils.text_constants import Texts
+
+texts = Texts()
 
 
 class Suit(Enum):
@@ -190,12 +193,12 @@ class BasicStrategy:
     ACTION_EMOJI = {"HIT": "👊", "STAND": "✋", "DOUBLE": "⚡", "SPLIT": "✂️",
                     "BLACKJACK": "🃏", "BUST": "💀"}
     ACTION_DESC = {
-        "HIT":      "Pide otra carta.",
-        "STAND":    "Plantarse. Tu mano es suficientemente fuerte.",
-        "DOUBLE":   "Dobla tu apuesta y recibe exactamente una carta más.",
-        "SPLIT":    "Divide tu par en dos manos independientes.",
-        "BLACKJACK":"¡Blackjack natural! Ganas automáticamente.",
-        "BUST":     "Te has pasado de 21. Pierdes automáticamente.",
+        "HIT":      texts.get("hit_desc"),
+        "STAND":    texts.get("stand_desc"),
+        "DOUBLE":   texts.get("double_desc"),
+        "SPLIT":    texts.get("split_desc"),
+        "BLACKJACK":texts.get("blackjack_desc"),
+        "BUST":     texts.get("bust_desc"),
     }
 
     @classmethod
