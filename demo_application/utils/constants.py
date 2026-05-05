@@ -1,4 +1,9 @@
-MODEL_PATH = "../final_models/yolov8s_playing_cards.pt"
+import os
+
+CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_ROOT = os.path.dirname(os.path.dirname(CURRENT_DIR))
+MODEL_PATH = os.path.join(PROJECT_ROOT, "final_models", "yolov8s_playing_cards.pt")
+
 CLASS_NAMES = [
     "10c",
     "10d",
