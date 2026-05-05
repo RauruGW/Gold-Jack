@@ -53,7 +53,7 @@ def display_team_scores():
     st.table(table_data)
 
 
-def detect_from_image(detector, uploaded_file):
+def detect_from_image(detector, uploaded_file, num_players):
     texts = st.session_state.texts
     
     if uploaded_file is None:
@@ -78,7 +78,7 @@ def detect_from_image(detector, uploaded_file):
 
     # Group cards by player position
     if detections:
-        player_groups, player_labels = detector.group_cards_by_position(detections, coordinates, boxes)
+        player_groups, player_labels = detector.group_cards_by_position(detections, coordinates, boxes, num_clusters=num_players+1)
 
         # Draw bounding boxes with different colors per player
         colors = [
@@ -213,9 +213,10 @@ def main():
         sub_col1, sub_col2 = st.columns(2)
         with sub_col1:
             uploaded_image = st.file_uploader("Carga una imagen de cartas", type=["jpg", "jpeg", "png", "bmp"])
+            num_players = st.number_input("Número de jugadores", min_value=1, value=1, step=1)
             if uploaded_image is not None:
                 if st.button(texts.get("take_snapshot")):
-                    detect_from_image(detector, uploaded_image)
+                    detect_from_image(detector, uploaded_image, num_players)
                     st.rerun()
 
         with sub_col2:
