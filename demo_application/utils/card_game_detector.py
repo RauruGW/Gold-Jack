@@ -2,7 +2,7 @@ import time
 from collections import Counter
 import torch
 import numpy as np
-from sklearn.cluster import KMeans
+from sklearn.cluster import KMeans, DBSCAN
 from ultralytics import YOLO
 from utils.game_logic import Card, Suit, Value, Game, GameMode
 
@@ -107,6 +107,29 @@ class CardGameDetector:
             boxes_list.append([x1, y1, x2, y2])
 
         return detections, coordinates, boxes_list
+
+    def auto_num_clusters(self, coordinates, max_k=8, eps_factor=1.6):
+        """Estimate the number of players (including dealer) from card positions.
+
+        The dealer may hold a single card, so its nearest neighbor belongs to a
+        different hand and inflates the median nearest-neighbor distance. We use
+        the 25th percentile to recover the true intra-hand spacing, and DBSCAN
+        with min_samples=1 so an isolated dealer card forms its own cluster
+        instead of being absorbed by the closest player. Orientation-agnostic.
+        """
+        if len(coordinates) <= 1:
+            return max(1, len(coordinates))
+
+        coords_arr = np.array(coordinates)
+        diff = coords_arr[:, None, :] - coords_arr[None, :, :]
+        dists = np.sqrt((diff ** 2).sum(axis=2))
+        np.fill_diagonal(dists, np.inf)
+
+        nn = dists.min(axis=1)
+        intra_hand = float(np.percentile(nn, 25))
+
+        labels = DBSCAN(eps=intra_hand * eps_factor, min_samples=1).fit_predict(coords_arr)
+        return min(int(labels.max() + 1), max_k)
 
     def group_cards_by_position(self, detections, coordinates, boxes, num_clusters=2):
         """Group cards into player hands based on K-Means clustering.

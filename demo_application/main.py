@@ -33,7 +33,8 @@ def initialize_session_state():
         st.session_state.player_groups = {}
     if "all_detections" not in st.session_state:
         st.session_state.all_detections = []
-
+    if "num_players_detected" not in st.session_state:
+        st.session_state.num_players_detected = 0
 
 def change_language():
     """Change the language in session state."""
@@ -51,8 +52,7 @@ def detect_from_image(detector, uploaded_file, num_players):
     nparr = np.frombuffer(file_bytes, np.uint8)
     image = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
     
-    # Redimensionar la imagen para mejorar detección y visualización
-    max_dimension = 600
+    max_dimension = 1920
     height, width = image.shape[:2]
     if max(height, width) > max_dimension:
         scale = max_dimension / max(height, width)
@@ -65,7 +65,11 @@ def detect_from_image(detector, uploaded_file, num_players):
 
     # Group cards by player position
     if detections:
-        player_groups, player_labels = detector.group_cards_by_position(detections, coordinates, boxes, num_clusters=num_players+1)
+        if num_players is None:
+            num_clusters = detector.auto_num_clusters(boxes)
+        else:
+            num_clusters = num_players + 1
+        player_groups, player_labels = detector.group_cards_by_position(detections, coordinates, boxes, num_clusters=num_clusters)
 
         # Draw bounding boxes with different colors per player
         colors = [
@@ -89,12 +93,14 @@ def detect_from_image(detector, uploaded_file, num_players):
         st.session_state.detection_message = texts.get("cards_detected")
         st.session_state.player_groups = player_groups
         st.session_state.all_detections = detections
+        st.session_state.num_players_detected = num_clusters - 1
     else:
         st.session_state.current_image = image
         st.session_state.detection_status = "error"
         st.session_state.detection_message = texts.get("no_cards_detected")
         st.session_state.player_groups = {}
         st.session_state.all_detections = []
+        st.session_state.num_players_detected = 0
 
 
 
@@ -121,11 +127,19 @@ def main():
 
     sub_col1, sub_col2 = st.columns(2)
     with sub_col1:
-        uploaded_image = st.file_uploader(texts.get("upload_image"), type=["jpg", "jpeg", "png", "bmp"])
+        detection_mode = st.selectbox(
+            texts.get("detection_mode"),
+            [texts.get("manual"), texts.get("automatic")]
+        )
+        if detection_mode == texts.get("automatic"):
+            st.text(texts.get("auto_detect_message"))
+            num_players = None
+        else:
+            num_players = st.number_input(texts.get("num_players"), min_value=1, value=1, step=1)
         
 
     with sub_col2:
-        num_players = st.number_input(texts.get("num_players"), min_value=1, value=1, step=1)
+        uploaded_image = st.file_uploader(texts.get("upload_image"), type=["jpg", "jpeg", "png", "bmp"])
 
 
     if uploaded_image is not None:
@@ -137,6 +151,8 @@ def main():
 
     if st.session_state.player_groups:
         st.subheader(texts.get("players_detected"))
+
+        st.text(f"{st.session_state.num_players_detected} {texts.get('players_detected_debug')}" if st.session_state.num_players_detected > 0 else texts.get("no_dealer_detected"))
 
         parsed_groups = {
             pid: detector.parse_cards(cards_raw)

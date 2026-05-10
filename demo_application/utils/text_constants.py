@@ -32,6 +32,10 @@ class Texts:
                 "image_analyzed": "Analyzed image",
                 "upload_image": "Upload a card image",
                 "num_players": "Number of players",
+                "detection_mode": "Detection mode",
+                "manual": "Manual",
+                "automatic": "Automatic",
+                "auto_detect_message": "The number of players will be detected automatically.",
                 "players_detected": "Detected Players",
                 "player": "Player",
                 "no_dealer_detected": "⚠️ No dealer detected.",
@@ -43,7 +47,8 @@ class Texts:
                 "double_desc": "Double your bet and receive exactly one more card.",
                 "split_desc": "Split your pair into two independent hands.",
                 "blackjack_desc": "Blackjack! You win automatically.",
-                "bust_desc": "You've gone over 21. You lose automatically."
+                "bust_desc": "You've gone over 21. You lose automatically.",
+                "players_detected_debug": "players detected"
             },
             "es": {
                 "page_title": "GoldJack - Asistente de Blackjack",
@@ -74,6 +79,10 @@ class Texts:
                 "image_analyzed": "Imagen analizada",
                 "upload_image": "Carga una imagen de cartas",
                 "num_players": "Número de jugadores",
+                "detection_mode": "Modo de detección",
+                "manual": "Manual",
+                "automatic": "Automático",
+                "auto_detect_message": "El número de jugadores se detectará automáticamente.",
                 "players_detected": "Jugadores Detectados",
                 "player": "Jugador",
                 "no_dealer_detected": "⚠️ No hay dealer detectado.",
@@ -86,6 +95,7 @@ class Texts:
                 "split_desc": "Divide tu par en dos manos independientes.",
                 "blackjack_desc": "¡Blackjack! Ganas automáticamente.",
                 "bust_desc": "Te has pasado de 21. Pierdes automáticamente.",
+                "players_detected_debug": "jugadores detectados"
             },
         }
 
