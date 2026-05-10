@@ -65,10 +65,7 @@ def detect_from_image(detector, uploaded_file, num_players):
 
     # Group cards by player position
     if detections:
-        if num_players is None:
-            num_clusters = detector.auto_num_clusters(boxes)
-        else:
-            num_clusters = num_players + 1
+        num_clusters = num_players + 1
         player_groups, player_labels = detector.group_cards_by_position(detections, coordinates, boxes, num_clusters=num_clusters)
 
         # Draw bounding boxes with different colors per player
@@ -127,19 +124,11 @@ def main():
 
     sub_col1, sub_col2 = st.columns(2)
     with sub_col1:
-        detection_mode = st.selectbox(
-            texts.get("detection_mode"),
-            [texts.get("manual"), texts.get("automatic")]
-        )
-        if detection_mode == texts.get("automatic"):
-            st.text(texts.get("auto_detect_message"))
-            num_players = None
-        else:
-            num_players = st.number_input(texts.get("num_players"), min_value=1, value=1, step=1)
+        uploaded_image = st.file_uploader(texts.get("upload_image"), type=["jpg", "jpeg", "png", "bmp"])
         
 
     with sub_col2:
-        uploaded_image = st.file_uploader(texts.get("upload_image"), type=["jpg", "jpeg", "png", "bmp"])
+        num_players = st.number_input(texts.get("num_players"), min_value=1, value=1, step=1)
 
 
     if uploaded_image is not None:
