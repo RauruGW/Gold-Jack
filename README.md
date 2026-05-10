@@ -5,6 +5,7 @@
 Para correr la aplicación crea un entorno virtual utilizando el siguiente comando:
 ```bash
 python -m venv env
+.\env\Scripts\Activate.ps1
 ```
 Luego instala todas las dependecias especificadas en el archivo *requirements.txt*:
 ```bash
