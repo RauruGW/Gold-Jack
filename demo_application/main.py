@@ -35,23 +35,25 @@ def initialize_session_state():
         st.session_state.all_detections = []
     if "num_players_detected" not in st.session_state:
         st.session_state.num_players_detected = 0
+    if "confidence_threshold" not in st.session_state:
+        st.session_state.confidence_threshold = 0.4
 
 def change_language():
     """Change the language in session state."""
     st.session_state.texts = Texts(language=st.session_state.language)
 
 
-def detect_from_image(detector, uploaded_file, num_players):
+def detect_from_image(detector, uploaded_file, num_players, confidence=0.4):
     texts = st.session_state.texts
-    
+
     if uploaded_file is None:
         st.warning(texts.get("upload_image"))
         return
-    
+
     file_bytes = uploaded_file.read()
     nparr = np.frombuffer(file_bytes, np.uint8)
     image = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-    
+
     max_dimension = 1920
     height, width = image.shape[:2]
     if max(height, width) > max_dimension:
@@ -61,7 +63,7 @@ def detect_from_image(detector, uploaded_file, num_players):
         image = cv2.resize(image, (new_width, new_height), interpolation=cv2.INTER_AREA)
 
     # Predict cards with coordinates
-    detections, coordinates, boxes = detector.predict(image)
+    detections, coordinates, boxes = detector.predict(image, conf=confidence)
 
     # Group cards by player position
     if detections:
@@ -122,18 +124,26 @@ def main():
             st.rerun()
 
 
-    sub_col1, sub_col2 = st.columns(2)
+    sub_col1, sub_col2, sub_col3 = st.columns([2, 1, 1])
     with sub_col1:
         uploaded_image = st.file_uploader(texts.get("upload_image"), type=["jpg", "jpeg", "png", "bmp"])
-        
 
     with sub_col2:
         num_players = st.number_input(texts.get("num_players"), min_value=1, value=1, step=1)
 
+    with sub_col3:
+        st.session_state.confidence_threshold = st.slider(
+            "Confianza",
+            min_value=0.0,
+            max_value=1.0,
+            value=st.session_state.confidence_threshold,
+            step=0.05,
+            format="%.2f"
+        )
 
     if uploaded_image is not None:
         if st.button(texts.get("take_snapshot")):
-            detect_from_image(detector, uploaded_image, num_players)
+            detect_from_image(detector, uploaded_image, num_players, confidence=st.session_state.confidence_threshold)
             st.rerun()
 
     st.markdown("---")

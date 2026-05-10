@@ -2,7 +2,7 @@ import time
 from collections import Counter
 import torch
 import numpy as np
-from sklearn.cluster import KMeans, DBSCAN
+from sklearn.cluster import KMeans, DBSCAN, AgglomerativeClustering
 from ultralytics import YOLO
 from utils.game_logic import Card, Suit, Value, Game, GameMode
 
@@ -67,9 +67,14 @@ class CardGameDetector:
         parsed_cards = [parsed_card for parsed_card in all_cards if parsed_card is not None]
         return parsed_cards
 
-    def predict(self, image):
-        """Predict cards with their coordinates and merge duplicate corners."""
-        results = self.model(image, conf=0.35, imgsz=416)
+    def predict(self, image, conf=0.4):
+        """Predict cards with their coordinates and merge duplicate corners.
+
+        Args:
+            image: Input image to process
+            conf: Confidence threshold for detections (0.0-1.0), default 0.4
+        """
+        results = self.model(image, conf=conf, imgsz=416)
 
         # Diccionario para unificar las esquinas de una misma carta
         merged_cards = {}
@@ -125,8 +130,10 @@ class CardGameDetector:
             return {}, []
 
         coordinates = np.array(coordinates)
+        
         num_clusters = min(num_clusters, len(coordinates))
-        clustering = KMeans(n_clusters=num_clusters, random_state=89620, n_init='auto').fit(coordinates)
+        
+        clustering = AgglomerativeClustering(n_clusters=num_clusters, linkage='single').fit(coordinates)
         labels = clustering.labels_
         
         players = {}
